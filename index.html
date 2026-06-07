@@ -3378,30 +3378,355 @@ window.onload = () => {
 </script>
 
 
+<!-- ============================================
+     授权验证系统 v2.0 - 嵌入代码
+     ============================================ -->
 
+<style>
+/* 授权系统样式 */
+.auth-badge {
+  position: fixed;
+  top: 60px;
+  right: 15px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 99;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.auth-badge:not(.activated) {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+  color: #333;
+  animation: authPulse 2s infinite;
+}
+.auth-badge.activated {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+}
+@keyframes authPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(255,193,7,0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 4px 16px rgba(255,193,7,0.5); }
+}
+.auth-badge:hover {
+  transform: translateY(-2px);
+}
+
+/* 授权弹窗 */
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: authFadeIn 0.3s ease;
+}
+@keyframes authFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.auth-modal-content {
+  background: var(--card, #ffffff);
+  border-radius: 16px;
+  width: 92%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: authSlideUp 0.3s ease;
+}
+@keyframes authSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.auth-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid var(--border, #eee);
+}
+.auth-modal-header h3 {
+  margin: 0;
+  color: var(--primary, #4a6fa5);
+  font-size: 20px;
+}
+.auth-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+.auth-close-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: #333;
+}
+.auth-modal-body {
+  padding: 25px;
+}
+.auth-modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 20px 25px;
+  border-top: 1px solid var(--border, #eee);
+  justify-content: flex-end;
+}
+
+/* 功能列表 */
+.auth-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 15px 0;
+}
+.auth-feature-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  font-size: 14px;
+}
+.auth-upgrade-box {
+  background: linear-gradient(135deg, rgba(74,111,165,0.05), rgba(74,111,165,0.1));
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  border: 1px solid rgba(74,111,165,0.2);
+}
+.auth-upgrade-box h4 {
+  margin: 0 0 15px 0;
+  color: var(--primary, #4a6fa5);
+  font-size: 16px;
+}
+.auth-upgrade-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.auth-upgrade-box li {
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--text, #333);
+}
+
+/* 输入框 */
+.auth-input-group {
+  margin: 20px 0;
+}
+.auth-input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text, #333);
+  font-size: 14px;
+}
+.auth-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border, #ddd);
+  border-radius: 10px;
+  font-size: 16px;
+  background: var(--bg, #f6f7fb);
+  color: var(--text, #222);
+  transition: all 0.3s;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.auth-input:focus {
+  outline: none;
+  border-color: var(--primary, #4a6fa5);
+  box-shadow: 0 0 0 4px rgba(74,111,165,0.1);
+}
+.auth-input-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #888;
+}
+
+/* 设备信息 */
+.auth-device-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: var(--bg, #f6f7fb);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.auth-device-info label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #666;
+}
+.auth-device-info code {
+  background: rgba(74,111,165,0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--primary, #4a6fa5);
+  word-break: break-all;
+}
+.auth-copy-btn {
+  padding: 6px 12px;
+  background: var(--primary, #4a6fa5);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* 状态提示 */
+.auth-status {
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 15px;
+  display: none;
+}
+.auth-status.show {
+  display: block;
+}
+.auth-status.error {
+  background: rgba(255,68,68,0.1);
+  color: #ff4444;
+  border: 1px solid rgba(255,68,68,0.3);
+}
+.auth-status.success {
+  background: rgba(76,175,80,0.1);
+  color: #4CAF50;
+  border: 1px solid rgba(76,175,80,0.3);
+}
+.auth-status.loading {
+  background: rgba(74,111,165,0.1);
+  color: var(--primary, #4a6fa5);
+  border: 1px solid rgba(74,111,165,0.3);
+}
+
+/* 按钮 */
+.auth-btn-primary, .auth-btn-secondary, .auth-btn-danger {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+.auth-btn-primary {
+  background: linear-gradient(135deg, var(--primary, #4a6fa5), #3d5a8a);
+  color: white;
+  box-shadow: 0 4px 12px rgba(74,111,165,0.3);
+}
+.auth-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(74,111,165,0.4);
+}
+.auth-btn-secondary {
+  background: var(--bg, #f6f7fb);
+  color: var(--text, #333);
+  border: 1px solid var(--border, #ddd);
+}
+.auth-btn-secondary:hover {
+  background: var(--border, #eee);
+}
+.auth-btn-danger {
+  background: rgba(255,68,68,0.1);
+  color: #ff4444;
+  border: 1px solid rgba(255,68,68,0.3);
+}
+
+/* 功能锁定 */
+.auth-locked {
+  opacity: 0.4;
+  pointer-events: none;
+  position: relative;
+  filter: grayscale(0.5);
+}
+.auth-locked::after {
+  content: '🔒';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .auth-badge {
+    top: 55px;
+    right: 10px;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  .auth-modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+  .auth-modal-body, .auth-modal-footer {
+    padding: 15px;
+  }
+  .auth-modal-footer {
+    flex-direction: column;
+  }
+  .auth-btn-primary, .auth-btn-secondary, .auth-btn-danger {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* 夜间模式适配 */
+.dark-mode .auth-modal-content {
+  background: var(--card, #1e1e1e);
+}
+.dark-mode .auth-input {
+  background: var(--bg, #2a2a2a);
+  color: var(--text, #e6e6e6);
+  border-color: var(--border, #444);
+}
+.dark-mode .auth-device-info {
+  background: var(--bg, #2a2a2a);
+}
+.dark-mode .auth-upgrade-box {
+  background: linear-gradient(135deg, rgba(74,111,165,0.1), rgba(74,111,165,0.15));
+}
+</style>
+
+
+<script>
 // ============================================
-// 授权验证系统 v3.0 - 预生成许可证方案
-// GitHub: https://github.com/sgliu123/reader-app-auth
+// 授权验证系统 v3.1 - 预生成许可证方案
 // ============================================
 (function() {
   'use strict';
 
   const CONFIG = {
-    // 从 jsDelivr CDN 加载加密授权文件（零Token暴露）
     LICENSE_URL: 'https://cdn.jsdelivr.net/gh/sgliu123/reader-app-auth@main/licenses.enc',
     FALLBACK_URL: 'https://sgliu123.github.io/reader-app-auth/licenses.enc',
-    SECRET_KEY: 'sgliu123.0%@&202606',  // 编译时嵌入，前端不可见源码
+    SECRET_KEY: 'sgliu123.0%@&202606',
     STORAGE_KEY: 'reader_auth_v3',
     DEVICE_KEY: 'reader_device_v3',
-    CACHE_DAYS: 30,       // 本地缓存30天
-    GRACE_DAYS: 5,        // 宽限期5天
+    CACHE_DAYS: 30,
+    GRACE_DAYS: 5,
     FEATURES: {
       BASIC: ['readTxt','readPdf','readDocx','basicTTS','fontSize','background','nightMode','localNotes','localStorage'],
       FULL: ['readEpub','aiSummary','translation','advancedTTS','voiceSelect','exportAll','timerClose','searchFull','customThemes']
     }
   };
 
-  // 简单XOR解密（与生成器对应）
   const Crypto = {
     decrypt(encrypted) {
       if (!encrypted) return null;
@@ -3417,7 +3742,6 @@ window.onload = () => {
     }
   };
 
-  // 设备指纹
   function generateDeviceId() {
     const nav = navigator, scr = window.screen;
     const components = [
@@ -3440,41 +3764,26 @@ window.onload = () => {
     return id;
   }
 
-  // 授权状态管理
   const AuthManager = {
     state: {
-      isActivated: false,
-      licenseKey: null,
-      activatedAt: null,
-      expiresAt: null,
-      deviceId: null,
-      deviceName: null,
-      features: [],
-      lastVerify: null,
-      nextVerify: null,
-      licenseData: null  // 缓存解密后的完整许可证数据
+      isActivated: false, licenseKey: null, activatedAt: null,
+      expiresAt: null, deviceId: null, deviceName: null,
+      features: [], lastVerify: null, nextVerify: null,
+      licenseData: null
     },
-    licenses: null,  // 所有授权码列表
+    licenses: null,
 
     init() {
       this.loadFromStorage();
       this.state.deviceId = getDeviceId();
       this.state.deviceName = navigator.userAgent.substring(0, 50);
-
-      // 检查过期
       if (this.state.isActivated && this.state.expiresAt) {
-        if (Date.now() > this.state.expiresAt) {
-          console.log('[Auth] License expired');
-          this.deactivate();
-        }
+        if (Date.now() > this.state.expiresAt) this.deactivate();
       }
-
-      // 检查是否需要静默验证
       const now = Date.now();
       if (this.state.isActivated && this.state.nextVerify && now > this.state.nextVerify) {
         this.silentVerify();
       }
-
       return this.state.isActivated;
     },
 
@@ -3486,7 +3795,7 @@ window.onload = () => {
           this.state = { ...this.state, ...parsed };
           if (parsed.licenseData) this.licenses = parsed.licenseData;
         }
-      } catch(e) { console.error('[Auth] Load error:', e); }
+      } catch(e) {}
     },
 
     saveToStorage() {
@@ -3507,10 +3816,8 @@ window.onload = () => {
       } catch(e) {}
     },
 
-    // 从CDN加载授权文件
     async loadLicenses() {
       try {
-        // 优先使用jsDelivr CDN（国内快）
         let res = await fetch(CONFIG.LICENSE_URL + '?t=' + Date.now(), { cache: 'no-store' });
         if (!res.ok) throw new Error('CDN failed');
         const encrypted = await res.text();
@@ -3520,7 +3827,6 @@ window.onload = () => {
         this.saveToStorage();
         return this.licenses;
       } catch(e) {
-        console.log('[Auth] CDN load failed, trying fallback:', e.message);
         try {
           let res = await fetch(CONFIG.FALLBACK_URL + '?t=' + Date.now(), { cache: 'no-store' });
           if (!res.ok) throw new Error('Fallback failed');
@@ -3531,60 +3837,40 @@ window.onload = () => {
           this.saveToStorage();
           return this.licenses;
         } catch(e2) {
-          // 使用本地缓存
           if (this.licenses) return this.licenses;
-          throw new Error('无法加载授权文件，请检查网络连接');
+          throw new Error('无法加载授权文件');
         }
       }
     },
 
-    // 激活授权码
     async activate(licenseKey) {
       licenseKey = licenseKey.toUpperCase().trim();
-
-      // 先加载授权文件
       try {
         await this.loadLicenses();
       } catch(e) {
         return { success: false, error: '无法加载授权文件: ' + e.message };
       }
-
       if (!this.licenses || !Array.isArray(this.licenses)) {
         return { success: false, error: '授权文件格式错误' };
       }
-
       const license = this.licenses.find(l => l.key === licenseKey);
-      if (!license) {
-        return { success: false, error: '授权码不存在' };
-      }
-
-      if (license.status === 'disabled') {
-        return { success: false, error: '授权码已被禁用' };
-      }
-
-      // 检查是否已绑定其他设备
+      if (!license) return { success: false, error: '授权码不存在' };
+      if (license.status === 'disabled') return { success: false, error: '授权码已被禁用' };
       if (license.deviceId && license.deviceId !== this.state.deviceId) {
         return { success: false, error: '授权码已绑定其他设备' };
       }
-
       const now = Date.now();
       const validityDays = license.type === '30' ? 30 : license.type === '365' ? 365 : 99999;
       const expiresAt = license.expiresAt || (now + validityDays * 86400000);
 
-      // 更新本地状态
       this.state = {
-        isActivated: true,
-        licenseKey: licenseKey,
-        activatedAt: license.activatedAt || now,
-        expiresAt: expiresAt,
-        deviceId: this.state.deviceId,
-        deviceName: this.state.deviceName,
-        features: CONFIG.FEATURES.FULL,
-        lastVerify: now,
+        isActivated: true, licenseKey: licenseKey,
+        activatedAt: license.activatedAt || now, expiresAt: expiresAt,
+        deviceId: this.state.deviceId, deviceName: this.state.deviceName,
+        features: CONFIG.FEATURES.FULL, lastVerify: now,
         nextVerify: now + (CONFIG.CACHE_DAYS + CONFIG.GRACE_DAYS) * 86400000
       };
 
-      // 更新许可证数据（标记为已使用）
       license.status = 'used';
       license.deviceId = this.state.deviceId;
       license.deviceName = this.state.deviceName;
@@ -3597,59 +3883,38 @@ window.onload = () => {
       return { success: true, expiresAt: expiresAt, features: CONFIG.FEATURES.FULL };
     },
 
-    // 验证授权（本地验证，无需网络）
     verify() {
       if (!this.state.isActivated) return { valid: false, error: '未激活' };
-
       const now = Date.now();
-
-      // 检查过期
       if (this.state.expiresAt && now > this.state.expiresAt) {
         this.deactivate();
         return { valid: false, error: '授权已过期' };
       }
-
-      // 检查设备
       const currentDevice = getDeviceId();
       if (this.state.deviceId && this.state.deviceId !== currentDevice) {
         this.deactivate();
         return { valid: false, error: '设备不匹配' };
       }
-
-      // 更新验证时间
       this.state.lastVerify = now;
       this.state.nextVerify = now + (CONFIG.CACHE_DAYS + CONFIG.GRACE_DAYS) * 86400000;
       this.saveToStorage();
-
-      const daysRemaining = this.state.expiresAt ? 
-        Math.ceil((this.state.expiresAt - now) / 86400000) : '永久';
-
+      const daysRemaining = this.state.expiresAt ? Math.ceil((this.state.expiresAt - now) / 86400000) : '永久';
       return { valid: true, expiresAt: this.state.expiresAt, daysRemaining: daysRemaining };
     },
 
-    // 静默验证（后台）
     async silentVerify() {
       try {
         const result = this.verify();
-        if (!result.valid) {
-          console.log('[Auth] Silent verify failed:', result.error);
-          this.deactivate();
-        }
+        if (!result.valid) { this.deactivate(); }
       } catch(e) {}
     },
 
     deactivate() {
       this.state = {
-        isActivated: false,
-        licenseKey: null,
-        activatedAt: null,
-        expiresAt: null,
-        deviceId: this.state.deviceId,
-        deviceName: this.state.deviceName,
-        features: [],
-        lastVerify: null,
-        nextVerify: null,
-        licenseData: this.licenses
+        isActivated: false, licenseKey: null, activatedAt: null,
+        expiresAt: null, deviceId: this.state.deviceId,
+        deviceName: this.state.deviceName, features: [],
+        lastVerify: null, nextVerify: null, licenseData: this.licenses
       };
       this.saveToStorage();
     },
@@ -3658,8 +3923,7 @@ window.onload = () => {
       if (CONFIG.FEATURES.BASIC.includes(feature)) return true;
       if (!this.state.isActivated) return false;
       if (this.state.expiresAt && Date.now() > this.state.expiresAt) {
-        this.deactivate();
-        return false;
+        this.deactivate(); return false;
       }
       return this.state.features.includes(feature) || CONFIG.FEATURES.FULL.includes(feature);
     },
@@ -3676,7 +3940,6 @@ window.onload = () => {
     }
   };
 
-  // 功能守卫
   const FeatureGuard = {
     check(feature, fallback) {
       if (AuthManager.hasFeature(feature)) return true;
@@ -3687,18 +3950,13 @@ window.onload = () => {
 
     showUpgradeDialog(feature) {
       const names = {
-        'readEpub': '📚 EPUB阅读',
-        'aiSummary': '🤖 AI智能总结',
-        'translation': '🌐 文本翻译',
-        'advancedTTS': '🎙️ 高级语音',
-        'voiceSelect': '🎵 音色选择',
-        'exportAll': '📥 批量导出',
-        'timerClose': '⏱️ 定时关闭',
-        'searchFull': '🔍 全文搜索',
+        'readEpub': '📚 EPUB阅读', 'aiSummary': '🤖 AI智能总结',
+        'translation': '🌐 文本翻译', 'advancedTTS': '🎙️ 高级语音',
+        'voiceSelect': '🎵 音色选择', 'exportAll': '📥 批量导出',
+        'timerClose': '⏱️ 定时关闭', 'searchFull': '🔍 全文搜索',
         'customThemes': '🎨 自定义主题'
       };
       const name = names[feature] || '此功能';
-
       const modal = document.createElement('div');
       modal.className = 'auth-modal';
       modal.innerHTML = `
@@ -3740,7 +3998,6 @@ window.onload = () => {
     }
   };
 
-  // UI管理
   const AuthUI = {
     showActivateDialog() {
       document.querySelectorAll('.auth-modal').forEach(m => m.remove());
@@ -3803,7 +4060,15 @@ window.onload = () => {
         badge.id = 'authBadge';
         badge.className = 'auth-badge';
         const topBar = document.querySelector('.top-bar');
-        if (topBar) topBar.appendChild(badge);
+        if (topBar) {
+          topBar.appendChild(badge);
+        } else {
+          document.body.appendChild(badge);
+          badge.style.position = 'fixed';
+          badge.style.top = '60px';
+          badge.style.right = '15px';
+          badge.style.zIndex = '99';
+        }
       }
       if (isActivated) {
         const info = AuthManager.getInfo();
@@ -3816,8 +4081,6 @@ window.onload = () => {
         badge.className = 'auth-badge';
         badge.onclick = () => this.showActivateDialog();
       }
-
-      // 更新功能锁定状态
       document.querySelectorAll('[data-auth-feature]').forEach(el => {
         const feature = el.getAttribute('data-auth-feature');
         el.classList.toggle('auth-locked', !AuthManager.hasFeature(feature));
@@ -3871,27 +4134,22 @@ window.onload = () => {
     }
   };
 
-  // 公开API
   window.ReaderAuth = {
     init() {
       const isActivated = AuthManager.init();
       AuthUI.updateUI();
-      // 启动定时验证
       setInterval(() => {
         if (AuthManager.state.isActivated) AuthManager.silentVerify();
-      }, 24 * 60 * 60 * 1000); // 每天验证一次
+      }, 24 * 60 * 60 * 1000);
       return isActivated;
     },
-
     async activate() {
       const input = document.getElementById('authLicenseInput');
       if (!input) return;
       const key = input.value.trim();
       if (!key || key.length < 16) { AuthUI.showStatus('请输入有效的授权码（16位）', 'error'); return; }
-
       AuthUI.showStatus('正在验证授权码...', 'loading');
       const result = await AuthManager.activate(key);
-
       if (result.success) {
         AuthUI.showStatus('🎉 激活成功！正在刷新...', 'success');
         AuthUI.updateUI();
@@ -3900,15 +4158,13 @@ window.onload = () => {
         AuthUI.showStatus('❌ ' + result.error, 'error');
       }
     },
-
     deactivate() {
-      if (confirm('确定要解除授权绑定吗？解除后需要重新输入授权码。')) {
+      if (confirm('确定要解除授权绑定吗？')) {
         AuthManager.deactivate();
         AuthUI.updateUI();
         location.reload();
       }
     },
-
     showActivateDialog() { AuthUI.showActivateDialog(); },
     check(feature, fallback) { return FeatureGuard.check(feature, fallback); },
     isActivated() { return AuthManager.state.isActivated; },
@@ -3916,13 +4172,85 @@ window.onload = () => {
     getInfo() { return AuthManager.getInfo(); }
   };
 
-  // DOM加载完成后初始化
+  // 确保DOM加载后初始化
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => window.ReaderAuth.init());
   } else {
-    window.ReaderAuth.init();
+    setTimeout(() => window.ReaderAuth.init(), 100);
   }
 })();
+
+// ============================================
+// 功能拦截 - 在关键功能点插入授权检查
+// ============================================
+
+// 拦截EPUB阅读
+const originalReadEpub = window.readEpub;
+window.readEpub = async function(f) {
+  if (!window.ReaderAuth.check('readEpub')) return;
+  return originalReadEpub.call(this, f);
+};
+
+// 拦截AI总结
+const originalShowAiSummary = window.showAiSummaryModal;
+window.showAiSummaryModal = function() {
+  if (!window.ReaderAuth.check('aiSummary')) return;
+  return originalShowAiSummary.call(this);
+};
+
+// 拦截翻译
+const originalShowTranslate = window.showTranslateModal;
+window.showTranslateModal = function() {
+  if (!window.ReaderAuth.check('translation')) return;
+  return originalShowTranslate.call(this);
+};
+
+// 拦截批量导出
+const originalShowExport = window.showExportOptions;
+window.showExportOptions = function() {
+  if (!window.ReaderAuth.check('exportAll')) return;
+  return originalShowExport.call(this);
+};
+
+// 拦截定时关闭
+const originalToggleTimer = window.toggleTimerMenu;
+window.toggleTimerMenu = function() {
+  if (!window.ReaderAuth.check('timerClose')) return;
+  return originalToggleTimer.call(this);
+};
+
+// 拦截高级音色选择
+const originalFilterVoices = window.filterVoices;
+window.filterVoices = function() {
+  if (!window.ReaderAuth.check('voiceSelect')) {
+    const searchTerm = document.getElementById('voiceSearch').value.toLowerCase().trim();
+    const limitedVoices = searchTerm === '' ? voices.slice(0, 5) : 
+      voices.slice(0, 5).filter(v => v.name.toLowerCase().includes(searchTerm) || v.lang.toLowerCase().includes(searchTerm));
+    filteredVoices = limitedVoices;
+    renderVoiceList();
+    return;
+  }
+  return originalFilterVoices.call(this);
+};
+
+// 拦截全文搜索
+const originalShowSearch = window.showSearch;
+window.showSearch = function() {
+  if (!window.ReaderAuth.check('searchFull')) return;
+  return originalShowSearch.call(this);
+};
+
+// 拦截自定义主题（超过5种）
+const originalSetBackground = window.setBackground;
+window.setBackground = function(cls) {
+  const basicThemes = ['bg-paper', 'bg-green', 'bg-pink', 'bg-blue', 'bg-night'];
+  if (!window.ReaderAuth.isActivated() && !basicThemes.includes(cls)) {
+    window.ReaderAuth.check('customThemes');
+    return;
+  }
+  return originalSetBackground.call(this, cls);
+};
+</script>
 
 </body>
 </html>
