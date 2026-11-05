@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>智能电子书阅读器</title>
 
-<link rel="manifest" href='data:application/json,{"name":"智能阅读","short_name":"智能阅读","start_url":"./","display":"standalone","background_color":"#ffffff","theme_color":"#4a6fa5"}'>
+<link rel="manifest" href='data:application/json,{"name":"智能阅读","short_name":"智能阅读","start_url":"./","display":"standalone","background_color":"#ffffff","theme_color":"%234a6fa5"}'>
 
 <!-- 开源库版权声明 -->
 <!-- 
@@ -2106,10 +2106,19 @@ let voices = [];
 let filteredVoices = [];
 let currentVoice = null;
 let bookKey = "";
-let notes = JSON.parse(localStorage.getItem('notes') || '[]');
+function safeStorageGet(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  } catch (e) { return fallback; }
+}
+function safeJsonParse(str, fallback) {
+  try { return JSON.parse(str); } catch (e) { return fallback; }
+}
+let notes = safeJsonParse(safeStorageGet('notes', '[]'), []);
 let selectedTextForNote = '';
 let isLooping = false;
-let bookLibrary = JSON.parse(localStorage.getItem('bookLibrary') || '{}');
+let bookLibrary = safeJsonParse(safeStorageGet('bookLibrary', '{}'), {});
 let totalChars = 0;
 let currentCharIndex = 0;
 let searchMatches = [];
@@ -2402,7 +2411,7 @@ function updateBookLibrary(fileName, fileType, content) {
     type: fileType,
     content: content || sentences
   };
-  localStorage.setItem('bookLibrary', JSON.stringify(bookLibrary));
+  try { localStorage.setItem('bookLibrary', JSON.stringify(bookLibrary)); } catch(e) { console.warn('保存书籍库失败:', e); }
   renderLibraryList();
 }
 
@@ -3434,7 +3443,7 @@ async function readEpub(f) {
             }
 
             updateProgressDisplay();
-            localStorage.setItem(bookKey, index);
+            try { localStorage.setItem(bookKey, index); } catch(e) {}
 
             // 检测章节变化
             const newCfi = loc.start.cfi;
@@ -4076,7 +4085,13 @@ function speakNextEpubSentence() {
   if (epubSpeakState.currentIdx >= epubSpeakState.sentences.length) {
     console.log('章节结束，尝试翻页');
     if (rendition) {
-      rendition.next().then(() => {
+      const nextPromise = rendition.next();
+      if (!nextPromise || typeof nextPromise.then !== 'function') {
+        speaking = false;
+        updatePlayButtons();
+        return;
+      }
+      nextPromise.then(() => {
         // 增加等待时间，确保iframe完全加载
         setTimeout(() => {
           if (!speaking) return;
@@ -4750,17 +4765,19 @@ function exportCurrentBookNotes() {
 function setFont(size) {
   if (rendition) rendition.themes.fontSize(size + 'px');
   else document.getElementById("reader").style.fontSize = size + "px";
-  localStorage.setItem('font_size', size);
-  document.querySelectorAll('#fontSizeBtns button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  try { localStorage.setItem('font_size', size); } catch(e) {}
+  document.querySelectorAll('#fontSizeBtns button').forEach(b => {
+    b.classList.toggle('active', parseInt(b.textContent, 10) === size);
+  });
 }
 
 // 背景
 function setBackground(cls) {
   document.body.className = document.body.classList.contains('dark-mode') ? 'dark-mode ' + cls : cls;
-  localStorage.setItem('background_class', cls);
-  document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('active'));
-  event.target.classList.add('active');
+  try { localStorage.setItem('background_class', cls); } catch(e) {}
+  document.querySelectorAll('.bg-option').forEach((o, idx) => {
+    o.classList.toggle('active', !!(bgColors[idx] && bgColors[idx][0] === cls));
+  });
 }
 
 // 高亮颜色
@@ -6150,7 +6167,7 @@ window.debugEpubSpeak = function() {
 // 初始化
 window.onload = () => {
   // 加载保存的设置
-  loadSavedSettings();
+  try { loadSavedSettings(); } catch (e) { console.warn('加载设置失败:', e); }
 
   // 检查用户是否已同意法律协议
   let hasAccepted = false;
@@ -6168,12 +6185,12 @@ window.onload = () => {
   }
   
   loadVoices();
-  document.getElementById('rate').value = localStorage.getItem("rate") || 1;
+  document.getElementById('rate').value = safeStorageGet('rate', 1);
   rateVal.textContent = document.getElementById('rate').value;
   
   // 加载字间距/行间距设置
-  const savedLetterSpacing = localStorage.getItem('letter_spacing') || 0;
-  const savedLineHeight = localStorage.getItem('line_height') || 1.8;
+  const savedLetterSpacing = safeStorageGet('letter_spacing', 0);
+  const savedLineHeight = safeStorageGet('line_height', 1.8);
   letterSpacingSlider.value = savedLetterSpacing;
   lineHeightSlider.value = savedLineHeight;
   letterSpacingVal.textContent = savedLetterSpacing;
@@ -6587,14 +6604,18 @@ function loadApiSummaryConfig() {
   // ============================================
 // 授权验证系统 v3.2 - 云端版配置
 // ============================================
+const API_ORIGIN = /(^|\.)github\.io$/.test(location.hostname)
+  ? 'https://reader-auth-pages.pages.dev'
+  : '';
 const CONFIG = {
   // ★★★ Cloudflare Pages API 基础地址 ★★★
-  BASE_API: '/api',
+  // GitHub Pages 上没有 /api，跨域指向 Cloudflare Pages（Functions 已开启 CORS）
+  BASE_API: API_ORIGIN + '/api',
   // 保留旧版本兼容
-  LICENSE_API: '/api/keys/use',
+  LICENSE_API: API_ORIGIN + '/api/keys/use',
   
   // 验证授权码API
-  VALIDATE_API: '/api/keys/validate',
+  VALIDATE_API: API_ORIGIN + '/api/keys/validate',
   
   // 本地加密密钥（用于混淆本地存储，非网络传输）
   SECRET_KEY: 'sgliu123.0%@&202606',
@@ -7251,9 +7272,9 @@ const AuthManager = {
     document.addEventListener('DOMContentLoaded', () => window.ReaderAuth.init());
   } else {
     setTimeout(() => window.ReaderAuth.init(), 100);
+  }
   // 静默预初始化Tesseract OCR引擎（后台下载模型，不阻塞用户）
   setTimeout(() => initTesseractSilent(), 2000);
-  }
 })();
 
 // ============================================
@@ -7331,7 +7352,7 @@ window.setBackground = function(cls) {
 };
 
 // ===== 智能问答功能 =====
-let qaHistory = JSON.parse(localStorage.getItem('qa_history') || '[]');
+let qaHistory = safeJsonParse(safeStorageGet('qa_history', '[]'), []);
 let currentQAContext = '';
 
 function getQAContext() {
